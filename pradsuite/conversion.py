@@ -10,21 +10,24 @@ import astropy.units as u
 import numpy as np
 
 from plasmapy.plasma.grids import CartesianGrid
+from plasmapy.diagnostics.proton_radiography import SyntheticProtonRadiograph
+from plasmapy.particles import Particle
 
 import pradformat as prf
+from pradformat import SimpleFields, SimpleRadiograph, ParticlesList
 
 ############### PlasmaPy Cartesian Grid Object <----> pradformat Simple Fields File/Object ################
-def save_prf_grid(grid, h5filename, label=None, description=None):
+def grid2prf(grid : CartesianGrid, h5filename, label=None, description=None):
     """Save PlasmaPy Grid to pradformat SimpleFields file"""  
     fld = grid2sf(grid, label=label, description=description)
     fld.save(h5filename)
 
-def load_prf_grid(h5filename):
+def prf2grid(h5filename):
     """Load PlasmaPy Grid from pradformat SimpleFieds file"""
     fld = prf.prad_load(h5filename)
     return sf2grid(fld)
     
-def grid2sf(grid, label=None, description=None):
+def grid2sf(grid : CartesianGrid, label=None, description=None):
     """
     Creates a pradformat SimpleFields object from a PlasmaPy Cartesian Grid object 
     """
@@ -48,12 +51,10 @@ def grid2sf(grid, label=None, description=None):
     
     return fld
 
-def sf2grid(fld):
+def sf2grid(fld : SimpleFields):
     """
     Creates a PlasmaPy Cartesian Grid object from a pradformat SimpleFields object
     """
-    assert isinstance(fld, prf.SimpleFields)
-
     grid = CartesianGrid(fld.X*u.m, fld.Y*u.m, fld.Z*u.m)
     
     ones = np.ones(grid.shape)
@@ -65,6 +66,37 @@ def sf2grid(fld):
                         B_y = ones * fld.By*u.T,
                         B_z = ones * fld.Bz*u.T)
     return grid
+
+#### PlasmaPy Synthetic Proton Radiography Object's Particles ----> pradformat Particles List ############
+def sradparts2prf(sim : SyntheticProtonRadiograph, h5filename, label=None, description=None):
+    """Save PlasmaPy Synthetic Proton Radiograph particles to pradformat ParticlesList file"""  
+    plist = sradparts2plist(sim, label=label, description=description)
+    plist.save(h5filename)
+
+def sradparts2plist(sim : SyntheticProtonRadiograph, label=None, description=None):
+    """
+    Creates a pradformat ParticlesList object from a PlasmaPy SyntheticRadiograph object 
+    """
+    assert sim.nparticles > 1
+
+    plist = prf.ParticlesList()
+    plist.charge = sim.q
+    plist.mass = sim.m
+    plist.x = sim.x[:,0]
+    plist.y = sim.x[:,1]
+    plist.z = sim.x[:,2]
+    plist.px = sim.m * sim.v[:,0]
+    plist.py = sim.m * sim.v[:,1]
+    plist.pz = sim.m * sim.v[:,2]
+    plist.energy = sim.proton_energy
+    
+    if not isinstance(label, type(None)):
+        plist.label = label
+        
+    if not isinstance(description, type(None)):
+        plist.description = description
+    
+    return plist
 
 if __name__ == "__main__":
     pass
